@@ -66,74 +66,50 @@ def testing(model, testdata):
 	return Y
 
 if __name__ == '__main__':
-	print "here"
 	df1 = pd.read_csv('dta_data.csv')
 	df2 = pd.read_csv('review_to_title.csv')
 	df3 = pd.merge(df1, df2, on='review_id', how='inner')
-	print "starting replacing"
 	df3 = df3.replace(np.nan, " ", regex=True)
-	print "done with replacing"
-	titles = df3['title'].values.tolist()
-	abstracts = df3['abstract'].values.tolist()
-	topics = df3['review_topic'].values.tolist()
-	# Y = df3['fulltext_relevant'].values
-	Y = df3['abstract_relevant'].values
+	titles_train = df3['title'].values.tolist()
+	abstracts_train = df3['abstract'].values.tolist()
+	topics_train = df3['review_topic'].values.tolist()
+	# Y_train = df3['fulltext_relevant'].values
+	Y_train = df3['abstract_relevant'].values
 	print "reading embeddings"
 	wve = read_word_embeddings()
 	print "done reading embeddings"
+
+	df4 = pd.read_csv('dta_data_test.csv')
+	df5 = pd.read_csv('review_to_title.csv')
+	df6 = pd.merge(df4, df5, on='review_id', how='inner')
+	df6 = df6.replace(np.nan, " ", regex=True)
+
+	titles_test = df6['title'].values.tolist()
+	abstracts_test = df6['abstract'].values.tolist()
+	topics_test = df6['review_topic'].values.tolist()
+
+
 	preprocessor_title = Preprocessor(max_features=14000, maxlen=20, wvs=wve)
 	preprocessor_abstract = Preprocessor(max_features=14000, maxlen=200, wvs=wve)
 	preprocessor_topic = Preprocessor(max_features=166, maxlen=20, wvs=wve)
 	
-	preprocessor_topic.preprocess(topics)
-	preprocessor_title.preprocess(titles)
-	preprocessor_abstract.preprocess(abstracts)
+	preprocessor_topic.preprocess(topics_train+topics_test)
+	preprocessor_title.preprocess(titles_train+titles_test)
+	preprocessor_abstract.preprocess(abstracts_train+abstracts_test)
 
 	print "creatign model"
-	model = CNNModel(preprocessor_title, preprocessor_abstract, preprocessor_topic, dropout=0.4)
+	model = CNNModel(preprocessor_title, preprocessor_abstract, preprocessor_topic, dropout=0.6)
 	print "done creatign model"
 
-	# trainsize = int(0.6*len(Y))
-	# indtrain = random.sample(xrange(len(Y)),trainsize)
-	# indtest = np.array([i for i in xrange(len(Y)) if i not in indtrain])
-	# indtrain = np.array(indtrain)
-	# titles_train = []
-	# abstracts_train = []
-	# topics_train = []
-	# Y_train = []
-	
-	# for i in indtrain:
-	# 	titles_train.append(titles[i])
-	# 	topics_train.append(topics[i])
-	# 	abstracts_train.append(abstracts[i])
-	# 	Y_train.append(Y[i])
-	# titles_test = []
-	# abstracts_test = []
-	# topics_test = []
-	# Y_true = []
-	# for i in indtest:
-	# 	titles_test.append(titles[i])
-	# 	topics_test.append(topics[i])
-	# 	abstracts_test.append(abstracts[i])
-	# 	Y_true.append(Y[i])
-
-	# Y_train = np.array(Y_train)
-	# Y_true = np.array(Y_true)
-
 	print "starting model training"
-	model = training(model, [titles, abstracts, topics], Y)
+	model = training(model, [titles_train, abstracts_train, topics_train], Y_train)
 	print "done model training"
 
 	print "starting testing"
-	Y_prediction = testing(model, [titles, abstracts, topics])
+	Ypred = testing(model, [titles_test, abstracts_test, topics_test])
 	print "done testing"
 
-	df3['yprediction'] = Y_prediction
-
-	df3.to_csv('results_abstract_relevant.csv', sep=',')
-	# print "writing test results to file"
-	# cPickle.dump((Y_prediction, Y, ), open('results.pkl', 'w'))
-	# print "done with test results to file"
-
+	df6['yprediction'] = Ypred
+	df6.to_csv('results_abstract_relevant_test.csv', sep=',')
 
 
